@@ -1,0 +1,129 @@
+,Reference,area,disturbance,sqrt_inv_eff_ss,sample_size,type,obsID,plumage_trait,life_stage,COR_std,COR_std_sv
+1,Eeva et al 2012,Turku,pollution,0.359397644,31,means,1,carotenoid,adults,0.083933373,0.033871138
+2,Isaksson et al 2007,Goteborg,urbanisation,0.351188458,37,means,3,carotenoid,adults,0.075987433,0.028156489
+3,Isaksson et al 2007,Goteborg,urbanisation,0.271627118,56,means,4,carotenoid,adults,0.06938522,0.018294915
+4,Isaksson et al 2007,Goteborg,urbanisation,0.271627118,56,means,5,carotenoid,adults,0.059882067,0.018351805
+5,Geens et al 2009,Antwerp,pollution,0.348315273,33,means,6,Brightness,adults,-0.004611348,0.032256329
+6,Geens et al 2009,Antwerp,pollution,0.55634864,13,means,7,Brightness,adults,0.078721106,0.08946485
+7,Geens et al 2009,Antwerp,pollution,0.449466575,20,means,8,Brightness,adults,0.031026151,0.055419292
+8,Grunst et al 2020b,Antwerp,pollution,0.14209964,210,means,9,Brightness,adults,0.04585136,0.004782418
+9,Dauwe & Eens 2008,Antwerp,pollution,0.354107116,40,means,10,chroma,adults,-0.397264177,0.017118493
+10,Dauwe & Eens 2008,Antwerp,pollution,0.354107116,40,means,11,chroma,adults,-0.393688682,0.017261552
+11,Geens et al 2009,Antwerp,pollution,0.348315273,33,means,12,chroma,adults,-0.446048975,0.018514972
+12,Grunst et al 2020b,Antwerp,pollution,0.14209964,210,means,13,chroma,adults,-0.032764379,0.004794776
+13,Hõrak et al 2001,Tartu,urbanisation,0.113455755,332,means,14,chroma,adults,-0.125960215,0.002911486
+14,Isaksson et al 2005,Goteborg,urbanisation,0.384212243,31,means,15,chroma,adults,-0.542353641,0.014490485
+15,Isaksson et al 2007,Goteborg,urbanisation,0.269981528,57,means,16,chroma,adults,-0.097510866,0.017749924
+16,Dauwe & Eens 2008,Antwerp,pollution,0.354107116,40,means,17,hue,adults,-0.474251688,0.013942625
+17,Dauwe & Eens 2008,Antwerp,pollution,0.468807231,20,means,18,hue,adults,-0.489790314,0.027862747
+18,Dauwe & Eens 2008,Antwerp,pollution,0.559016994,20,means,19,hue,adults,-0.431981537,0.032983493
+19,Geens et al 2009,Antwerp,pollution,0.348315273,33,means,20,hue,adults,-0.40924558,0.020371904
+20,Geens et al 2009,Antwerp,pollution,0.55634864,13,means,21,hue,adults,-0.44067175,0.052416429
+21,Geens et al 2009,Antwerp,pollution,0.449466575,20,means,22,hue,adults,-0.399392851,0.035802201
+22,Grunst et al 2020b,Antwerp,pollution,0.14209964,210,means,23,hue,adults,0.114811596,0.00465063
+23,Hõrak et al 2001,Tartu,urbanisation,0.113455755,332,means,24,hue,adults,-0.233764766,0.002633724
+24,Hõrak et al 2004,Tartu,urbanisation,0.493548117,19,means,25,hue,adults,-0.490159853,0.029445398
+25,Isaksson et al 2007,Goteborg,urbanisation,0.269981528,57,means,26,hue,adults,-0.216211636,0.016121921
+26,Grunst et al 2020b,Antwerp,pollution,0.14209964,210,means,27,UVchroma,adults,-0.170668385,0.00446507
+27,Isaksson et al 2007,Goteborg,urbanisation,0.269981528,57,means,28,NA,adults,-0.160306395,0.0170298
+28,Isaksson et al 2006,Goteborg,urbanisation,0.24640269,68,means,29,chroma,adults,-0.178270443,0.013971438
+29,This study,Malmö,urbanisation,0.219544455,83,means,30,chroma,adults,-0.331148818,0.009236974
+30,This study,Lisbon,urbanisation,0.343592135,34,means,31,chroma,adults,-0.690290424,0.006403679
+31,This study,Madrid,urbanisation,0.335410197,36,means,32,chroma,adults,-0.726919603,0.004716843
+32,This study,Milan,urbanisation,0.343592135,34,means,33,chroma,adults,0.106624712,0.030359652
+33,This study,Goteborg,urbanisation,0.426401433,22,means,34,chroma,adults,-0.325099055,0.037684223
+34,This study,Malmö,urbanisation,0.219544455,83,means,35,chroma,adults,0.202904415,0.011110785
+35,This study,Lisbon,urbanisation,0.343592135,34,means,36,chroma,adults,0.060172234,0.030964648
+36,This study,Madrid,urbanisation,0.335410197,36,means,37,chroma,adults,-0.193774651,0.026704577
+37,This study,Milan,urbanisation,0.343592135,34,means,38,chroma,adults,0.108387017,0.030330262
+38,This study,Goteborg,urbanisation,0.426401433,22,means,39,chroma,adults,-0.150094692,0.047185495
+39,Isaksson et al 2006,Goteborg,urbanisation,0.24640269,68,means,40,UVchroma,adults,0.370530328,0.010479851
+40,Isaksson et al 2006,Goteborg,urbanisation,0.24640269,68,means,41,NA,adults,0.271163165,0.01251307
+41,Isaksson et al 2006,Goteborg,urbanisation,0.24640269,68,means,42,NA,adults,-0.041833907,0.015084929
+42,Sillanpää et al 2008,Turku,pollution,0.265024707,59,means,43,carotenoid,nestlings,-0.001752523,0.017543724
+43,Sillanpää et al 2008,Turku,pollution,0.271627118,56,means,44,carotenoid,nestlings,0,0.018518519
+44,Eeva et al 2012,Turku,pollution,0.205298061,95,means,45,carotenoid,nestlings,-0.029087772,0.010729863
+45,Ruiz et al 2016,Turku,pollution,0.345395781,34,means,46,carotenoid,nestlings,-0.477607959,0.016370696
+46,Ruiz et al 2017,Turku,pollution,0.303573488,47,means,47,carotenoid,nestlings,-0.308010709,0.017305416
+47,Ruiz et al 2016,Turku,pollution,0.365148372,30,means,48,carotenoid,nestlings,-0.185816438,0.032677556
+48,Ruiz et al 2016,Turku,pollution,0.359397644,31,means,49,carotenoid,nestlings,-0.022472327,0.03443868
+49,Ruiz et al 2017,Turku,pollution,0.387298335,27,means,50,carotenoid,nestlings,-0.017488251,0.039968971
+50,Isaksson et al 2007,Goteborg,urbanisation,0.137661061,212,means,51,carotenoid,nestlings,-0.237818816,0.004117501
+51,Isaksson et al 2007,Goteborg,urbanisation,0.137947749,211,means,52,carotenoid,nestlings,-0.230638182,0.004174034
+52,Geens et al 2009,Antwerp,pollution,0.166762535,145,means,53,Brightness,nestlings,-0.110387317,0.006781473
+53,Grunst et al 2020a,Antwerp,pollution,0.091783985,497,means,54,Brightness,nestlings,-0.025373996,0.002016949
+54,Biard et al 2017,Paris,urbanisation,0.177402455,142,means,55,Brightness,nestlings,-0.019978985,0.007135712
+55,Biard et al 2017,Niort,urbanisation,0.135508427,218,means,56,Brightness,nestlings,0.017247946,0.004626181
+56,This study,Malmö,urbanisation,0.235881843,73,means,57,Brightness,nestlings,-0.03483837,0.014041579
+57,Eeva et al 2014,Turku,pollution,0.359397644,31,means,58,chroma,nestlings,-0.845674914,0.001732685
+58,Geens et al 2009,Antwerp,pollution,0.166762535,145,means,59,chroma,nestlings,-0.228415811,0.006116192
+59,Grunst et al 2020a,Antwerp,pollution,0.091783985,497,means,60,chroma,nestlings,-0.029945841,0.002015673
+60,Eeva et al 2008,Turku,pollution,0.273364703,55,means,61,chroma,nestlings,-0.237398226,0.016310485
+61,Eeva et al 2009,Turku,pollution,0.2444674,71,means,62,chroma,nestlings,-0.56252041,0.005670402
+62,Eeva et al 2014,Turku,pollution,0.378932373,28,means,63,chroma,nestlings,-0.220486516,0.03390623
+63,Eeva et al 2014,Turku,pollution,0.371611676,29,means,64,chroma,nestlings,-0.181567287,0.034025034
+64,Koivula et al 2011,Turku,pollution,0.271627118,56,means,65,chroma,nestlings,-0.07099869,0.018284437
+65,Biard et al 2017,Paris,urbanisation,0.177402455,142,means,66,chroma,nestlings,-0.454171802,0.004029377
+66,Biard et al 2017,Niort,urbanisation,0.135508427,218,means,67,chroma,nestlings,-0.489149002,0.00235577
+67,Hõrak et al 2000,Tartu,urbanisation,0.250702577,67,means,68,chroma,nestlings,-0.24013592,0.013255804
+68,Hõrak et al 2000,Tartu,urbanisation,0.207035401,94,means,69,chroma,nestlings,-0.257461296,0.00915556
+69,Isaksson et al 2005,Goteborg,urbanisation,0.203749949,102,means,70,chroma,nestlings,-0.516526838,0.004644627
+70,Isaksson et al 2006,Goteborg,urbanisation,0.118571669,337,means,71,chroma,nestlings,0.051962128,0.002964945
+71,Isaksson et al 2007,Goteborg,urbanisation,0.124049416,260,means,72,chroma,nestlings,-0.012243107,0.003874514
+72,Isaksson et al 2006,Goteborg,urbanisation,0.274515667,63,means,73,chroma,nestlings,0.085465231,0.016093959
+73,This study,Malmö,urbanisation,0.235881843,73,means,74,chroma,nestlings,0.208589782,0.012597542
+74,Geens et al 2009,Antwerp,pollution,0.166762535,145,means,75,hue,nestlings,-0.173301164,0.006479107
+75,Grunst et al 2020a,Antwerp,pollution,0.091783985,497,means,76,hue,nestlings,-0.050349434,0.002007414
+76,Isaksson et al 2007,Goteborg,urbanisation,0.124049416,260,means,77,hue,nestlings,-0.104454668,0.003771006
+77,Grunst et al 2020a,Antwerp,pollution,0.091783985,497,means,78,UVchroma,nestlings,0.057870081,0.00200332
+78,Isaksson et al 2006,Goteborg,urbanisation,0.118571669,337,means,79,UVchroma,nestlings,0.00863163,0.002984518
+79,Isaksson et al 2006,Goteborg,urbanisation,0.274515667,63,means,80,UVchroma,nestlings,0.204644407,0.014723975
+80,Isaksson et al 2006,Goteborg,urbanisation,0.118571669,337,means,81,NA,nestlings,-0.076609922,0.002941429
+81,Isaksson et al 2006,Goteborg,urbanisation,0.118571669,337,means,82,NA,nestlings,0.043004583,0.002971277
+82,Isaksson et al 2007,Goteborg,urbanisation,0.124049416,260,means,83,NA,nestlings,-0.012243107,0.003874514
+83,Isaksson et al 2006,Goteborg,urbanisation,0.274515667,63,means,84,NA,nestlings,-0.056344644,0.016262841
+84,Isaksson et al 2006,Goteborg,urbanisation,0.274515667,63,means,85,NA,nestlings,0.131205205,0.015693266
+85,Giraudeau et al 2015,Barcelona,pollution,0.176776695,32,cors,86,Other,adults,-0.404,0.022587338
+86,Grunst et al 2020b,Antwerp,pollution,0.03943615,643,cors,87,Brightness,adults,-0.09024,0.001532367
+87,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,88,Brightness,adults,-0.03868,0.002051461
+88,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,89,Brightness,adults,0.04541,0.002049136
+89,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,90,Brightness,adults,0.0005199,0.002057612
+90,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,91,Brightness,adults,-0.004682,0.002057523
+91,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,92,Brightness,adults,0.05083,0.002046994
+92,Grunst et al 2020b,Antwerp,pollution,0.060522753,273,cors,93,Brightness,adults,0.015998,0.003674589
+93,Grunst et al 2020b,Antwerp,pollution,0.060522753,273,cors,94,Brightness,adults,-0.04994,0.003658155
+94,Grunst et al 2020b,Antwerp,pollution,0.03943615,643,cors,95,Brightness,adults,-0.01468,0.001556961
+95,Grunst et al 2020b,Antwerp,pollution,0.03943615,643,cors,96,chroma,adults,0.12765,0.001507284
+96,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,97,chroma,adults,-0.001005,0.002057609
+97,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,98,chroma,adults,-0.05758,0.002043992
+98,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,99,chroma,adults,0.02687,0.002054643
+99,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,100,chroma,adults,0.04395,0.002049672
+100,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,101,chroma,adults,0.05029,0.002047219
+101,Grunst et al 2020b,Antwerp,pollution,0.060522753,273,cors,102,chroma,adults,-0.08285,0.003626172
+102,Grunst et al 2020b,Antwerp,pollution,0.060522753,273,cors,103,chroma,adults,-0.09625,0.003608668
+103,Grunst et al 2020b,Antwerp,pollution,0.03943615,643,cors,104,chroma,adults,0.06405,0.001544879
+104,Grunst et al 2020b,Antwerp,pollution,0.03943615,643,cors,105,hue,adults,-0.12451,0.001509712
+105,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,106,hue,adults,-0.02216,0.002055593
+106,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,107,hue,adults,-0.008303,0.002057329
+107,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,108,hue,adults,-0.03018,0.002053867
+108,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,109,hue,adults,-0.03962,0.002051158
+109,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,110,hue,adults,-0.03618,0.00205223
+110,Grunst et al 2020b,Antwerp,pollution,0.060522753,273,cors,111,hue,adults,0.07674,0.003633296
+111,Grunst et al 2020b,Antwerp,pollution,0.060522753,273,cors,112,hue,adults,0.13211,0.003549259
+112,Grunst et al 2020b,Antwerp,pollution,0.03943615,643,cors,113,hue,adults,-0.09771,0.001528032
+113,Grunst et al 2020b,Antwerp,pollution,0.03943615,643,cors,114,UVchroma,adults,0.07865,0.001538422
+114,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,115,UVchroma,adults,0.03115,0.002053622
+115,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,116,UVchroma,adults,0.02568,0.0020549
+116,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,117,UVchroma,adults,0.05251,0.002046282
+117,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,118,UVchroma,adults,0.006467,0.002057441
+118,Grunst et al 2020b,Antwerp,pollution,0.045314325,487,cors,119,UVchroma,adults,0.03422,0.002052797
+119,Grunst et al 2020b,Antwerp,pollution,0.060522753,273,cors,120,UVchroma,adults,-0.08693,0.003621116
+120,Grunst et al 2020b,Antwerp,pollution,0.060522753,273,cors,121,UVchroma,adults,-0.10577,0.003594671
+121,Grunst et al 2020b,Antwerp,pollution,0.03943615,643,cors,122,UVchroma,adults,0.13549,0.001500969
+122,Ruiz et al 2016,Turku,pollution,0.145864991,47,cors,125,carotenoid,nestlings,-0.144,0.020846913
+123,Ruiz et al 2016,Turku,pollution,0.204124145,24,cors,126,carotenoid,nestlings,0.06,0.043165781
+124,Eeva et al 1998,Turku,pollution,0.055215763,328,cors,127,Other,nestlings,-0.656,0.000992407
+125,Eeva et al 2014,Turku,pollution,0.106600358,88,cors,128,chroma,nestlings,-0.539,0.005785752
+126,Eeva et al 2008,Turku,pollution,0.133630621,56,cors,129,chroma,nestlings,0.027,0.018155319
+127,Eeva et al 2009,Turku,pollution,0.054635836,335,cors,130,chroma,nestlings,-0.056,0.002975263
+128,Koivula et al 2011,Turku,pollution,0.131306433,58,cors,131,chroma,nestlings,-0.07,0.017372351

@@ -1,0 +1,361 @@
+---
+title: "Extracting temperature data from E-OBS"
+author: "david lopez idiaquez"
+date: "2025-09-26"
+output: html_document
+---
+```{r}
+library(dplyr)
+setwd("~/Desktop/Eobs for salmon")
+```
+
+#1. load and plot coordinates to see if they make sense
+```{r}
+coords_salmon <- read.csv("~/Desktop/Eobs for salmon/coords_salmon.csv")
+coord_feath<-coords_salmon %>% 
+  filter(feather=="si")
+```
+
+```{r}
+# install packages if needed
+
+library(ggplot2)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+
+# your data frame is coord_feath
+# convert to sf object
+points_sf <- st_as_sf(coord_feath2, coords = c("longitude", "latitude"), crs = 4326)
+
+# get world map
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+# plot
+ggplot(data = world) +
+  geom_sf(fill = "grey90") +
+  geom_sf(data = points_sf, aes(color = area), size = 3) +
+  coord_sf(xlim = c(-15, 20), ylim = c(35, 65), expand = FALSE) + # zoom to Europe
+  scale_color_manual(values = c("Urban" = "grey60", "Rural" = "darkgreen")) + # customize if you like
+  theme_bw() +
+  labs(title = "Feather Sites by Area",
+       color = "Area")
+#parece que estan en el sitio que tienen que estar
+
+coord_feath2 <- coord_feath %>%
+  mutate(
+    latitude = case_when(
+      (city %in% c("Malmo")) & grepl("Urban", area) ~ latitude + 0.1,
+      TRUE ~ latitude
+    ),
+    longitude = case_when(
+      (city %in% c("Malmo")) & grepl("Urban", area) ~ longitude + 0.12,
+      TRUE ~ longitude
+    )
+  ) %>% 
+    mutate(
+    latitude = case_when(
+      (city %in% c("Gothenburg")) & grepl("Urban", area) ~ latitude + 0.2,
+      TRUE ~ latitude
+    ),
+    longitude = case_when(
+      (city %in% c("Gothenburg")) & grepl("Urban", area) ~ longitude + 0.2,
+      TRUE ~ longitude
+    )
+  )
+```
+
+
+```{r}
+# Load library
+library(terra)
+library(readr)
+library(readxl)
+library(dplyr)
+library(tibble)
+library(tidyr)
+
+# Open the NetCDF as a SpatRaster
+r_tmax <- rast("tx_ens_mean_0.1deg_reg_v31.0e.nc")
+r_tmean <- rast("tg_ens_mean_0.1deg_reg_v31.0e.nc")
+r_tmin <- rast("tn_ens_mean_0.1deg_reg_v31.0e.nc")
+```
+
+#tmax
+```{r}
+#Plot populations on map
+# Convert first raster layer to a data frame
+r_df_max <- as.data.frame(r_tmax[[1]], xy = TRUE, na.rm = TRUE)
+
+names(r_df_max)[3] <- "Tmax"
+
+# Plot raster + points
+ggplot() +
+  geom_raster(data = r_df_max, aes(x = x, y = y, fill = Tmax)) +
+  scale_fill_viridis_c(name = "Tmax", na.value = "transparent") +
+  geom_point(data = coord_feath2, aes(x = longitude, y = latitude), color = "indianred", size = 2) +
+  geom_text(data = coord_feath2, aes(x = longitude, y = latitude, label = city), vjust = -1, size = 2.5) +
+  coord_equal() +
+  theme_bw()
+#things are as they should.
+
+# Convert coords_pops2 tibble to SpatVector
+pop_points <- vect(coord_feath2, geom = c("longitude", "latitude"), crs = crs(r_tmax))
+
+# Extract all Tmax values for each point
+tmax_extract <- terra::extract(r_tmax, pop_points)
+
+# Add PopIDs to results
+tmax_extract$city <- coord_feath2$city
+tmax_extract$area <- coord_feath2$area
+
+# Get dates from raster
+dates <- time(r_tmax)
+date_names <- paste0("Day_", seq_along(dates))  # Temporary column names
+
+# Rename Tmax columns to use temporary names
+names(tmax_extract)[2:(length(dates)+1)] <- date_names
+
+# Convert from wide to long format
+tmax_long <- tmax_extract %>%
+  pivot_longer(
+    cols = starts_with("Day_"),
+    names_to = "Day_Index",
+    values_to = "Tmax"
+  ) %>%
+  mutate(
+    Date = dates[as.integer(gsub("Day_", "", Day_Index))],
+    Tmax = Tmax # Only if E-OBS data is scaled by 10 (if they are really large)
+  ) %>%
+  select(city, area, Date, Tmax)
+
+# View result
+head(tmax_long)
+
+sum(is.na(tmax_long$Tmax)) #No NAs
+```
+
+#tmin
+```{r}
+#Plot populations on map
+# Convert first raster layer to a data frame
+r_df_min <- as.data.frame(r_tmin[[1]], xy = TRUE, na.rm = TRUE)
+
+names(r_df_min)[3] <- "Tmin"
+
+# Plot raster + points
+ggplot() +
+  geom_raster(data = r_df_min, aes(x = x, y = y, fill = Tmin)) +
+  scale_fill_viridis_c(name = "Tmin", na.value = "transparent") +
+  geom_point(data = coord_feath, aes(x = longitude, y = latitude), color = "indianred", size = 2) +
+  geom_text(data = coord_feath, aes(x = longitude, y = latitude, label = city), vjust = -1, size = 2.5) +
+  coord_equal() +
+  theme_bw()
+#things are as they should.
+
+# Convert coords_pops2 tibble to SpatVector
+pop_points <- vect(coord_feath2, geom = c("longitude", "latitude"), crs = crs(r_tmin))
+
+# Extract all Tmax values for each point
+tmin_extract <- terra::extract(r_tmin, pop_points)
+
+# Add PopIDs to results
+tmin_extract$city <- coord_feath$city
+tmin_extract$area <- coord_feath$area
+
+# Get dates from raster
+dates <- time(r_tmin)
+date_names <- paste0("Day_", seq_along(dates))  # Temporary column names
+
+# Rename Tmax columns to use temporary names
+names(tmin_extract)[2:(length(dates)+1)] <- date_names
+
+# Convert from wide to long format
+tmin_long <- tmin_extract %>%
+  pivot_longer(
+    cols = starts_with("Day_"),
+    names_to = "Day_Index",
+    values_to = "Tmin"
+  ) %>%
+  mutate(
+    Date = dates[as.integer(gsub("Day_", "", Day_Index))],
+    Tmin = Tmin # Only if E-OBS data is scaled by 10 (if they are really large)
+  ) %>%
+  select(city, area, Date, Tmin)
+
+# View result
+head(tmin_long)
+
+sum(is.na(tmin_long$Tmin)) #No NAs
+```
+
+#tmean
+```{r}
+#Plot populations on map
+# Convert first raster layer to a data frame
+r_df_mean <- as.data.frame(r_tmean[[1]], xy = TRUE, na.rm = TRUE)
+
+names(r_df_mean)[3] <- "Tmean"
+
+# Plot raster + points
+ggplot() +
+  geom_raster(data = r_df_mean, aes(x = x, y = y, fill = Tmean)) +
+  scale_fill_viridis_c(name = "Tmean", na.value = "transparent") +
+  geom_point(data = coord_feath, aes(x = longitude, y = latitude), color = "indianred", size = 2) +
+  geom_text(data = coord_feath, aes(x = longitude, y = latitude, label = city), vjust = -1, size = 2.5) +
+  coord_equal() +
+  theme_bw()
+#things are as they should.
+
+# Convert coords_pops2 tibble to SpatVector
+pop_points <- vect(coord_feath2, geom = c("longitude", "latitude"), crs = crs(r_tmean))
+
+# Extract all Tmax values for each point
+tmean_extract <- terra::extract(r_tmean, pop_points)
+
+# Add PopIDs to results
+tmean_extract$city <- coord_feath$city
+tmean_extract$area <- coord_feath$area
+
+# Get dates from raster
+dates <- time(r_tmean)
+date_names <- paste0("Day_", seq_along(dates))  # Temporary column names
+
+# Rename Tmax columns to use temporary names
+names(tmean_extract)[2:(length(dates)+1)] <- date_names
+
+# Convert from wide to long format
+tmean_long <- tmean_extract %>%
+  pivot_longer(
+    cols = starts_with("Day_"),
+    names_to = "Day_Index",
+    values_to = "Tmean"
+  ) %>%
+  mutate(
+    Date = dates[as.integer(gsub("Day_", "", Day_Index))],
+    Tmean = Tmean # Only if E-OBS data is scaled by 10 (if they are really large)
+  ) %>%
+  select(city, area, Date, Tmean)
+
+# View result
+head(tmean_long)
+
+sum(is.na(tmean_long$Tmean)) #No NAs
+```
+
+```{r}
+juntas<-left_join(tmin_long, tmax_long, by=c("city", "area", "Date"))
+juntas2<-left_join(juntas, tmean_long, by=c("city", "area", "Date"))
+```
+
+Prepare the data for Salmon
+```{r}
+cities_and_years <- read_csv("Cities_and_Years.csv")
+
+juntas2_y<-left_join(juntas2, cities_and_years, by=c("city"="City"))
+
+juntas2_y<-juntas2_y %>% 
+  mutate(year_clim=substr(Date, 1,4))
+
+#media anual
+year_mean <- juntas2_y %>% 
+  filter(year_clim == Year) %>% 
+  group_by(area, city) %>% 
+  summarise(
+    an_mean_Tmean = mean(Tmean, na.rm = TRUE),
+    an_se_Tmean   = sd(Tmean, na.rm = TRUE) / sqrt(n()),
+    an_mean_Tmin = mean(Tmin, na.rm = TRUE),
+    an_se_Tmin   = sd(Tmin, na.rm = TRUE) / sqrt(n()),
+    an_mean_Tmax = mean(Tmax, na.rm = TRUE),
+    an_se_Tmax   = sd(Tmax, na.rm = TRUE) / sqrt(n()),
+  ) %>% 
+  ungroup()
+
+#media invierno anterior (Nov-Feb)
+winter_mean <- juntas2_y %>%
+  mutate(
+    date_year = year(Date),
+    month = month(Date)
+  ) %>%
+  filter(
+    (month %in% c(11, 12) & date_year == (Year - 1)) |   
+    (month %in% c(1, 2)   & date_year ==  Year)          
+  ) %>%
+  group_by(city, area) %>%
+  summarise(
+    across(
+      c(Tmean, Tmax, Tmin),
+      list(
+        mean = ~ mean(.x, na.rm = TRUE),
+        se   = ~ sd(.x,  na.rm = TRUE) / sqrt(sum(!is.na(.x)))
+      ),
+      .names = "{.col}_{.fn}"
+    ),
+    n_days = n(),          
+    .groups = "drop"
+  ) %>% 
+  ungroup() %>% 
+  rename(win_mean_Tmean=Tmean_mean,
+         win_se_Tmean=Tmean_se,
+         win_mean_Tmax=Tmax_mean,
+         win_se_Tmax=Tmax_se,
+         win_mean_Tmin=Tmin_mean,
+         win_se_Tmin=Tmin_se)
+
+#media meses muda
+moult_mean <- juntas2_y %>% 
+  mutate(prevY=(Year-1)) %>% #con esto cambio el ano de muestreo de la pluma al ano anterior para sacar la media de cuando mudan
+  filter(year_clim == prevY) %>% 
+  mutate(month=month(Date)) %>% 
+  filter(month>=6 & month<=9) %>% 
+  group_by(area, city) %>% 
+  summarise(
+    mou_mean_Tmean = mean(Tmean, na.rm = TRUE),
+    mou_se_Tmean   = sd(Tmean, na.rm = TRUE) / sqrt(n()),
+    mou_mean_Tmin = mean(Tmin, na.rm = TRUE),
+    mou_se_Tmin   = sd(Tmin, na.rm = TRUE) / sqrt(n()),
+    mou_mean_Tmax = mean(Tmax, na.rm = TRUE),
+    mou_se_Tmax   = sd(Tmax, na.rm = TRUE) / sqrt(n()),
+  ) %>% 
+  ungroup()
+```
+
+Juntarlo todo
+```{r}
+medias<-left_join(year_mean, winter_mean, by = join_by(area, city))
+medias2<-left_join(medias, moult_mean, by = join_by(area, city))
+
+write.csv(medias2, "temperature_data_Fstructure.csv")
+```
+
+Elevation
+```{r}
+install.packages("httr")
+library(httr)
+
+coords_salmon <- read_csv("coords_salmon.csv")
+coords_salmon_2<-coords_salmon %>% 
+  filter(feather=="si")
+
+get_elevation_openmeteo <- function(lat, lon) {
+  url <- paste0(
+    "https://api.open-meteo.com/v1/elevation?latitude=", lat,
+    "&longitude=", lon
+  )
+  res <- GET(url)
+  content(res)$elevation[[1]]
+}
+
+coords_salmon_2$elevation <- mapply(
+  get_elevation_openmeteo,
+  coords_salmon_2$latitude,
+  coords_salmon_2$longitude
+)
+
+write.csv(coords_salmon_2, "elevation.csv")
+```
+
+
+
+
+

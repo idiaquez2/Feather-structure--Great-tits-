@@ -1,0 +1,1366 @@
+---
+title: ""
+author: "Authors: "
+date: "25/12/2025"
+output:
+  html_document:
+    number_sections: true
+    fig_caption: true
+    toc: true
+    theme: cosmo
+    highlight: tango
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+#0. Load packages and data wrangle
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+pacman::p_load(
+  tidyverse, ggplot2, cowplot, patchwork, ggpubr, lme4, emmeans, 
+  MCMCglmm, nadiv, broom.mixed, lmerTest, ggeffects, ggforce, performance,
+  car
+)
+library("dotwhisker")  ## coefficient plots
+library(forcats) #Reverse plot order
+```
+
+Load & wrangle data
+```{r}
+# Feather structure data
+allMeasur_db <- read.csv("../RawData/bbdd_barbulas_fin_28.09.25.csv", sep = ",", header = TRUE)
+
+##There were some ids in the feathers that were not properly written change those
+#PB09->PB9
+#PB08->PB8
+#MI09->MI9
+#2AZ11188->2A211188
+
+allMeasur_db <- allMeasur_db %>%
+  mutate(id = case_when(
+    id == "PB09"     ~ "PB9",
+    id == "PB08"     ~ "PB8",
+    id == "MI09"     ~ "MI9",
+    id == "2AZ11188" ~ "2A211188",
+    TRUE             ~ id  
+  ))
+
+# Reduce the dataset to get one observation per feather a bit in line with Phillomore's comment in JAE (using the barbules independently may be too much)
+
+MeanMeasur_db <- allMeasur_db %>%
+  group_by(im_name) %>%
+  summarise(
+    id = first(id),
+    mean_density = mean(barbule_density, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Load the colouration dataset to include relevant data
+ColourInfo_db <- read.csv("../RawData/EU_GTcolour.csv", sep = ",", header = TRUE)
+
+MeanColour_db <- ColourInfo_db %>%
+  group_by(id) %>%
+  summarise(
+    samp_date = first(samp_date),
+    habitat  = first(habitat),
+    area     = first(area),
+    sex      = first(sex),
+    age      = first(age),
+    .groups = "drop")
+
+# Combine feather structure data bases
+FeatherAd_db <- MeanColour_db %>%
+  left_join(MeanMeasur_db, by = "id")
+
+summary(FeatherAd_db)
+
+rm(allMeasur_db, ColourInfo_db, MeanColour_db, MeanMeasur_db)
+
+#add elevation
+elevation <- read.csv("C:/Users/Usuario/Dropbox/3.CEFE/10.Color con Pablo/Colouration & Cities/DataBase_Structure/Analyses/Eobs for salmon/elevation.csv")
+
+elevation2<-elevation %>% 
+  mutate(habitat=area,
+         area=city)
+
+str(elevation2)
+
+elevation2$habitat <- ifelse(elevation2$habitat == "Rural", "Forest", elevation2$habitat)
+elevation2$area <- ifelse(elevation2$area == "Gothenburg", "Goteborg", elevation2$area)
+
+elevation2<-elevation2 %>% 
+  select(habitat, area, elevation)
+
+FeatherAd_db<-left_join(FeatherAd_db, elevation2, by=c("habitat", "area"))
+
+
+
+# # Combine feather info and environmental
+# Temperature_db <- read.csv("../RawData/temperature_data_Fstructure.csv", sep = ",", header = TRUE)
+# 
+# FeatherAd_db <- FeatherAd_db %>%
+#   mutate(area_habitat = paste(area, habitat, sep = "_")) # link variable for the join
+# 
+# Temperature_db <- Temperature_db %>%
+#   mutate(area_habitat = paste(area, habitat, sep = "_")) # link variable for the join
+# 
+# FeatherAd_db <- FeatherAd_db %>%
+#   left_join(
+#     Temperature_db %>%
+#       select(-X, -area, -habitat),
+#     by = "area_habitat")
+# 
+# FeatherAd_db$sex <- factor(FeatherAd_db$sex)
+# FeatherAd_db$habitat <- factor(FeatherAd_db$habitat)
+# FeatherAd_db <- FeatherAd_db %>%
+#   filter(habitat != "#N/A")
+# FeatherAd_db$population <- paste(FeatherAd_db$area, FeatherAd_db$habitat)
+# 
+# FeatherAd_db <- FeatherAd_db %>%
+#   mutate(season = dplyr::recode(area,
+#     "Goteborg" = "breeding",
+#     "Lisbon" = "wintering",
+#     "Madrid" = "breeding",
+#     "Milan" = "wintering",
+#     "Malmo" = "breeding"
+#   ))
+# 
+# str(FeatherAd_db)
+
+### Prepare a PCA with feather structure
+#-No need for this, we only have one variable that is density
+# feather_matrix <- FeatherAd_db %>%
+#   dplyr::select(mean_length, mean_barbule, mean_density)
+# 
+# feather_matrix <- feather_matrix %>%
+#   na.omit()
+# 
+# feather_pca <- prcomp(feather_matrix, scale. = TRUE)
+# summary(feather_pca)
+# feather_pca$rotation
+
+####Plotting stuff###
+#For plotting title as a grid (https://github.com/tidyverse/ggplot2/issues/2344)
+# element_textbox <- function(...) {
+#   el <- element_text(...)
+#   class(el) <- c("element_textbox", class(el))
+#   el
+# }
+# 
+# element_grob.element_textbox <- function(element, ...) {
+#   text_grob <- NextMethod()
+#   rect_grob <- element_grob(calc_element("strip.background", theme_bw()))
+#   
+#   ggplot2:::absoluteGrob(
+#     grid::gList(
+#       element_grob(calc_element("strip.background", theme_bw())),
+#       text_grob
+#     ),
+#     height = grid::grobHeight(text_grob), 
+#     width = grid::unit(1, "npc")
+#   )
+# }
+# 
+# #####Sumamry of sample sizes####
+# TableSummary_adults <- FeatherAd_db %>%
+#   # filter(YH < 500) %>%
+#   group_by(habitat, sex, age) %>%
+#   # select(YB, YH, YC, habitat, sex, age, id) %>%
+#   select(mean_YB, habitat, sex, age, id) %>%
+#   count (id)  %>%
+#   summarise_all(funs(Nind = n()))
+# 
+# #Sumamry of sample sizes
+# TableSummary_MALMO <- MALMO %>%
+#   filter(YH < 500) %>% #Remove observations over 500
+#   group_by(habitat, sex, age) %>%
+#   # select(YB, YH, YC, habitat, sex, age, id) %>%
+#   select(YC, habitat, sex, age, id) %>%
+#   count (id)  %>%
+#   summarise_all(funs(Nind = n()))
+# library(patchwork)
+# AdultYH + NestlingsYH
+
+```
+
+#1. Are there differences in the feather microstructure between the urban and rural habitat
+##1.1 Model
+```{r}
+FeatherAd_db$area_habitat<-paste(FeatherAd_db$area, FeatherAd_db$habitat, sep="_")
+
+model_habitat <- lmer(mean_density ~ habitat + sex + age + habitat*age + (1|area_habitat)+ (1|area) +(1|id), data=FeatherAd_db) 
+summary(model_habitat)
+anova(model_habitat)
+
+plot(predict_response(model_habitat, terms="elevation"))
+
+#some tests
+hist(residuals(model_habitat))
+qqnorm(resid(model_habitat))
+qqline(resid(model_habitat), col = "red")
+
+# Fixed effects:
+#                      Estimate Std. Error       df t value Pr(>|t|)    
+# (Intercept)           19.7953     0.4390  26.1403  45.092   <2e-16 ***
+# habitatUrban          -0.1566     0.3116  17.4651  -0.502   0.6216    
+# sex                    0.3267     0.1895 197.6403   1.724   0.0863 .  
+# age2yr+                0.4494     0.2631 200.3492   1.708   0.0892 .  
+# habitatUrban:age2yr+  -0.3476     0.3744 199.8574  -0.929   0.3543      
+
+model_habitat_2 <- lmer(mean_density ~ habitat + sex + age + (1|area_habitat)+(1|area) +(1|id), data=FeatherAd_db) 
+summary(model_habitat_2)
+anova(model_habitat_2)
+
+# Random effects:
+#  Groups       Name        Variance Std.Dev.
+#  id           (Intercept) 1.17968  1.0861  
+#  area_habitat (Intercept) 0.04145  0.2036  
+#  area         (Intercept) 0.28503  0.5339  
+#  Residual                 1.48197  1.2174  
+# Number of obs: 624, groups:  id, 208; area_habitat, 10; area, 5
+# 
+# Fixed effects:
+#              Estimate Std. Error       df t value Pr(>|t|)    
+# (Intercept)   19.8645     0.4284  26.3436  46.366   <2e-16 ***
+# habitatUrban  -0.3517     0.2293   5.3056  -1.534   0.1824    
+# sex            0.3311     0.1894 198.7088   1.748   0.0821 .  
+# age2yr+        0.2839     0.1940 199.6841   1.464   0.1449    
+
+
+#some tests
+hist(residuals(model_habitat_2))
+qqnorm(resid(model_habitat_2))
+qqline(resid(model_habitat_2), col = "red")
+```
+
+No hay una interaccion significativa entre habitat y age; testeado en relacion a los resultados de Sandor (2022). Quito la interaccion y en el modelo simple no hay efectos (generales) de lo urbano. Me ha llamado la atencion la cantidad de varianza que explica el individuo (37.5%).
+
+##1.2 Plot
+```{r}
+library(ggeffects)
+library(ggplot2)
+
+pred_general <- as.data.frame(predict_response(model_habitat, terms = "habitat"))
+
+p1 <- ggplot() +
+  # --- Jittered raw data points ---
+  geom_jitter(
+    data = FeatherAd_db,
+    aes(x = habitat, y = mean_density),
+    width  = 0.15,
+    height = 0,
+    size   = 1.8,
+    alpha  = 0.35,
+    colour = "grey70",
+    shape  = 19
+  ) +
+    # --- Confidence interval error bars ---
+  geom_errorbar(
+    data = pred_general,
+    aes(x = x, ymin = predicted-std.error, ymax = predicted+std.error, colour = x),
+    width     = 0.08,
+    linewidth = 1.0
+  ) +
+  # --- Predicted mean points ---
+  geom_point(
+    data = pred_general,
+    aes(x = x, y = predicted, fill = x),
+    size  = 5,
+    shape = 21,
+    stroke = 1.5
+  ) +
+
+  # --- Colours for Forest vs Urban ---
+  scale_fill_manual(
+    values = c(
+      "Forest" = "springgreen4",
+      "Urban"  = "grey50"
+    )
+  ) +
+    scale_color_manual(
+    values = c(
+      "Forest" = "black",
+      "Urban"  = "black"
+    )
+  ) +
+
+  labs(
+    x      = "Habitat",
+    y      = "Mean barbule density"
+  ) +
+
+  theme_bw(base_size = 22) +
+  theme(
+    legend.position = "none",
+    axis.text.x     = element_text(size = 12, face = "bold"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.title.x    = element_blank(),
+  )+
+  scale_y_continuous(
+  limits = c(14.9, 27),           # min and max of y axis
+  breaks = seq(16, 26, by = 2)  # breaks every 2 units: 16, 18, 20, 22, 24, 26
+)
+  
+p1
+```
+
+#2. Are the urban effects consisten across space
+##2.1 Model
+```{r}
+model_space <- lmer(mean_density ~ habitat*area + sex + age + (1|id), data=FeatherAd_db) 
+summary(model_space)
+anova(model_space) 
+
+#the interaction is not significant, meaning the (lack of) effects of habitat are consistent in space
+model_space_2 <- lmer(mean_density ~ habitat+area + sex + age + (1|id), data=FeatherAd_db) 
+summary(model_space_2)
+anova(model_space_2) 
+
+```
+
+Post-hoc test
+```{r}
+library(emmeans)
+
+# --- Marginal means for area (averaged over habitat, sex, age) ---
+emm_area <- emmeans(model_space_2, ~ area)
+emm_area  # view the marginal means + SE
+
+# --- All pairwise comparisons ---
+pairs_area <- pairs(emm_area, adjust = "tukey")  # or "bonferroni", "fdr", "none"
+summary(pairs_area)
+
+# --- If you want confidence intervals too ---
+confint(pairs_area)
+
+# --- Compact letter display (groups sharing a letter are not significantly different) ---
+library(multcomp)
+cld(emm_area, adjust = "tukey", Letters = letters)
+
+# --- Extract CLD letters ---
+cld_df <- as.data.frame(cld(emm_area, adjust = "tukey", Letters = letters))
+cld_df$.group <- trimws(cld_df$.group)  # remove whitespace from letters
+```
+
+##2.2 Plot
+```{r}
+# --- Model-adjusted predictions by area, coloured by habitat ---
+pred_space <- predict_response(model_space, terms = c("area", "habitat"))
+pred_space_df <- as.data.frame(pred_space)
+
+# --- Calculate label position (just above the upper CI of the highest group per area) ---
+label_pos <- pred_space_df %>%
+  group_by(x) %>%
+  summarise(label_y = max(predicted + std.error) + 0.3)  # adjust 0.3 to taste
+
+cld_df <- cld_df %>%
+  left_join(label_pos, by = c("area" = "x"))
+
+# --- Summarise raw data for jitter (unadjusted, just for visual context) ---
+raw_summary <- FeatherAd_db %>%
+  group_by(area, habitat) %>%
+  summarise(mean_density = mean(mean_density), .groups = "drop")
+
+# --- Colour palette ---
+hab_colours <- c("Forest" = "springgreen4", "Urban" = "grey50")
+
+p2 <- ggplot() +
+  # --- Raw jittered points ---
+  geom_jitter(
+    data = FeatherAd_db,
+    aes(x = area, y = mean_density, colour = habitat),
+    width  = 0.2,
+    height = 0,
+    size   = 1.5,
+    alpha  = 0.3,
+    shape  = 16
+  ) +
+  # --- SE error bars ---
+  geom_errorbar(
+    data = pred_space_df,
+    aes(x = x, ymin = predicted - std.error, ymax = predicted + std.error,
+        colour = group),
+    width     = 0.1,
+    linewidth = 0.9,
+    position  = position_dodge(width = 0.5)
+  ) +
+  # --- Predicted means ---
+  geom_point(
+    data = pred_space_df,
+    aes(x = x, y = predicted, fill = group),
+    size     = 4,
+    shape    = 21,
+    stroke   = 1.2,
+    position = position_dodge(width = 0.5)
+  ) +
+  # --- CLD letters at fixed y = 16 ---
+  geom_text(
+    data     = cld_df,
+    aes(x    = area, label = .group),
+    y        = 14.7,
+    size     = 4,
+    colour   = "black"
+  ) +
+  scale_y_continuous(
+    limits = c(15.5, NA),              # must be below y = 16 so letters are visible
+    expand = expansion(mult = c(0.02, 0.05))
+  ) +
+  scale_fill_manual(values = hab_colours) +
+  scale_colour_manual(values = hab_colours) +
+  labs(
+    y      = "",
+    fill   = "Habitat",
+    colour = "Habitat"
+  ) +
+  theme_bw(base_size = 22) +
+  theme(
+    legend.position = "none",
+    axis.title.x    = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  )+
+  scale_y_continuous(
+  limits = c(14.9, 27),           # min and max of y axis
+  breaks = seq(16, 26, by = 2)  # breaks every 2 units: 16, 18, 20, 22, 24, 26
+)
+
+p2
+```
+
+#3. Links with latitude
+##3.1 Model latitude
+```{r}
+city_lat <- c(
+  Goteborg = 57.7089,
+  Lisbon   = 38.7169,
+  Madrid   = 40.4168,
+  Malmo    = 55.6050,
+  Milan    = 45.4642
+)
+
+city_elev <- c(
+  Goteborg = 12,
+  Lisbon   = 2,
+  Madrid   = 667,
+  Malmo    = 17,
+  Milan    = 122
+)
+
+FeatherAd_db$latitude  <- city_lat[FeatherAd_db$area]
+FeatherAd_db$elevation <- city_elev[FeatherAd_db$area]
+
+
+model_latitude<- lmer(mean_density ~ habitat+latitude + sex + age + (1|id)+(1|area), data=FeatherAd_db) 
+summary(model_latitude)
+anova(model_latitude) 
+
+plot(predict_response(model_latitude, terms=c("latitude", "habitat")))
+
+
+model_elevation<- lmer(mean_density ~ habitat+elevation + sex + age + (1|id)+(1|area), data=FeatherAd_db) 
+summary(model_elevation)
+anova(model_elevation) 
+
+plot(predict_response(model_elevation, terms=c("elevation", "habitat")))
+```
+
+#4. Euro Map
+```{r}
+library(maps)
+
+# Your data
+city_lat <- c(Goteborg = 57.7089, Lisbon = 38.7169, Madrid = 40.4168, Malmo = 55.6050, Milan = 45.4642)
+city_lon <- c(Goteborg = 11.9746, Lisbon = -9.1395, Madrid = -3.7038, Malmo = 13.0038, Milan = 9.1900)
+
+cities_df <- data.frame(
+  city = names(city_lat),
+  lat  = city_lat,
+  lon  = city_lon
+)
+
+# Get all world countries and crop to the range of the points
+world <- map_data("world")
+
+p_map<-ggplot() +
+  geom_polygon(data = world, aes(x = long, y = lat, group = group),
+               fill = "lightgrey", color = "white", linewidth = 0.2) +
+  geom_point(data = cities_df, aes(x = lon, y = lat),
+             color = "firebrick", size = 3) +
+  geom_text(data = cities_df, aes(x = lon, y = lat, label = city),
+            vjust = -0.8, size = 3.5) +
+  coord_fixed(1.3, xlim = c(-12, 20), ylim = c(35, 62)) +
+  labs(x = "Longitude", y = "Latitude") +
+  theme_bw()
+```
+
+```{r}
+library(cowplot)
+
+plot<-plot_grid(p1, p2,
+          ncol    = 2,
+          align   = "h",
+          rel_widths = c(1, 2))
+
+#save it
+ggsave(plot,
+  filename = "plot_effects.png",
+  width    = 12,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Analyses
+##Linking colour and structure
+#add latitude
+```{r}
+city_lat <- c(
+  Goteborg = 57.7089,
+  Lisbon   = 38.7169,
+  Madrid   = 40.4168,
+  Malmo    = 55.6050,
+  Milan    = 45.4642
+)
+
+
+city_elev <- c(
+  Goteborg = 12,
+  Lisbon   = 2,
+  Madrid   = 667,
+  Malmo    = 17,
+  Milan    = 122
+)
+
+FeatherAd_db$latitude  <- city_lat[FeatherAd_db$area]
+FeatherAd_db$elevation <- city_elev[FeatherAd_db$area]
+
+table(FeatherAd_db$age)
+```
+
+Me understandind the dataset
+```{r}
+table(FeatherAd_db$area)
+table(FeatherAd_db$habitat)
+table(FeatherAd_db$season)
+table(FeatherAd_db$age)
+table(FeatherAd_db$id)
+table(FeatherAd_db$samp_date)
+
+hist(FeatherAd_db$mean_density)
+```
+
+#feathers were samples in two different years but this not appears in the data - create these variables
+```{r}
+str(FeatherAd_db)
+FeatherAd_db<-FeatherAd_db %>% 
+  mutate(year = substr(samp_date, 7, nchar(samp_date))) %>% 
+  mutate(year = case_when(
+    year == "14" ~ "2014",
+    year == "15" ~ "2015",
+    year == "18" ~ "2014",
+    year == "24" ~ "2014",
+    TRUE         ~ year
+  ))
+
+table(FeatherAd_db$year)
+
+#just realised that the samples in 2015 are only present in one area
+```
+
+
+#Test whether there are differences between urban/forest
+```{r}
+model_habitat <- lmer(mean_density ~ habitat+latitude +elevation  + sex + age + elevation + (1|area), data=FeatherAd_db) 
+summary(model_habitat)
+anova(model_habitat)
+
+hist(residuals(model_habitat))
+
+
+plot(predict_response(model_habitat, terms="habitat"), show_data = TRUE)
+```
+
+#Urban vs Forest
+```{r}
+library(ggeffects)
+library(ggplot2)
+
+pred <- as.data.frame(predict_response(model_habitat, terms = "habitat"))
+
+
+p1 <- ggplot() +
+  # --- Jittered raw data points ---
+  geom_jitter(
+    data = FeatherAd_db,
+    aes(x = habitat, y = mean_density),
+    width  = 0.15,
+    height = 0,
+    size   = 1.8,
+    alpha  = 0.35,
+    colour = "grey70",
+    shape  = 19
+  ) +
+    # --- Confidence interval error bars ---
+  geom_errorbar(
+    data = pred,
+    aes(x = x, ymin = predicted-std.error, ymax = predicted+std.error, colour = x),
+    width     = 0.08,
+    linewidth = 1.0
+  ) +
+  # --- Predicted mean points ---
+  geom_point(
+    data = pred,
+    aes(x = x, y = predicted, fill = x),
+    size  = 5,
+    shape = 21,
+    stroke = 1.5
+  ) +
+
+  # --- Colours for Forest vs Urban ---
+  scale_fill_manual(
+    values = c(
+      "Forest" = "springgreen4",
+      "Urban"  = "grey50"
+    )
+  ) +
+    scale_color_manual(
+    values = c(
+      "Forest" = "black",
+      "Urban"  = "black"
+    )
+  ) +
+
+  labs(
+    x      = "Habitat",
+    y      = "Predicted barbule density"
+  ) +
+
+  theme_bw(base_size = 18) +
+  theme(
+    legend.position = "none",
+    axis.text.x     = element_text(size = 12, face = "bold"),
+    plot.title      = element_text(hjust = 0.5, face = "bold"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.title.x    = element_blank(),
+  )+
+  scale_y_continuous(
+  limits = c(16, 24.4),           # min and max of y axis
+  breaks = seq(16, 24, by = 2)  # breaks every 2 units: 16, 18, 20, 22, 24, 26
+)
+  
+p1
+
+
+
+# Warning message:
+# Removed 4 rows containing missing values or values outside the scale range (`geom_point()`). 
+## There are 4 NAs
+
+###Tengo que elegir los colores
+```
+
+#Test whether there are differences between areas and habitats
+```{r}
+FeatherAd_db$area<-as.factor(FeatherAd_db$area)
+FeatherAd_db$habitat<-as.factor(FeatherAd_db$habitat)
+FeatherAd_db$age<-as.factor(FeatherAd_db$age)
+FeatherAd_db$sex<-as.factor(FeatherAd_db$sex)
+
+model_area <- lm(mean_density ~ area+habitat+age + sex + age, data=FeatherAd_db) 
+summary(model_area)
+anova(model_area) #there are differences between areas
+
+pred_means <- predict_response(model_area, terms = c("area"))
+as.data.frame(pred_means)
+
+
+plot(predict_response(model_area, terms=c("area")), show_data = FALSE) #they do not seem huge
+
+#some rejigging to plot them latitudinally
+
+# Set area as factor ordered by latitude (low to high)
+FeatherAd_db2<-FeatherAd_db
+FeatherAd_db2$area <- factor(FeatherAd_db2$area, 
+                             levels = c("Lisbon", "Madrid", "Milan", "Malmo", "Goteborg"))
+
+# Refit the model with the reordered factor
+model_area_habitat <- lmer(mean_density ~ habitat + elevation + sex + age + (1|area), data = FeatherAd_db2)
+summary(model_area_habitat)
+anova(model_area_habitat)
+
+plot(predict_response(model_area_habitat, terms="elevation"), show_data = TRUE)
+
+# Plot
+plot(predict_response(model_area, terms = c("area", "age")), show_data = TRUE)
+
+# sex differences
+model_sex_age <- lmer(mean_density ~ habitat + sex + age + (1|area), data = FeatherAd_db2)
+summary(model_sex_age)
+
+plot(predict_response(model_sex_age, terms = c("sex")), show_data = FALSE)
+plot(predict_response(model_sex_age, terms = c("age")), show_data = FALSE)
+
+#effects of latitude
+model_latitude <- lmer(mean_density ~ habitat + sex + age + latitude + (1|area), data = FeatherAd_db2)
+summary(model_latitude)
+
+#difernecia
+str(FeatherAd_db2)
+
+result <- FeatherAd_db2 %>%
+  group_by(area, habitat) %>%
+  summarise(
+    mean_density = mean(mean_density, na.rm = TRUE),
+    mean_lat = mean(latitude, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  pivot_wider(names_from = habitat, values_from = mean_density) %>%
+  mutate(density_diff = Urban - Forest)
+
+model_cosa <- lm(density_diff ~ mean_lat, data = result)
+summary(model_cosa)
+
+```
+
+#By city
+```{r}
+# library(ggeffects)
+# library(ggplot2)
+# 
+# pred_city_habitat <- as.data.frame(predict_response(model_area_habitat, terms = c("habitat", "area")))
+# pred_city_habitat$com<-paste(pred_city_habitat$group, pred_city_habitat$x, sep="_")
+# 
+# p1 <- ggplot() +
+#   # --- Jittered raw data points ---
+#   geom_jitter(
+#     data = FeatherAd_db2,
+#     aes(x = area_habitat, y = mean_density),
+#     width  = 0.15,
+#     height = 0,
+#     size   = 1.8,
+#     alpha  = 0.35,
+#     colour = "grey70",
+#     shape  = 19
+#   ) +
+#     # --- Confidence interval error bars ---
+#   geom_errorbar(
+#     data = pred_city_habitat,
+#     aes(x = x, ymin = predicted-std.error, ymax = predicted+std.error, colour = x),
+#     width     = 0.08,
+#     linewidth = 1.0
+#   ) +
+#   # --- Predicted mean points ---
+#   geom_point(
+#     data = pred_city_habitat,
+#     aes(x = x, y = predicted, fill = x),
+#     size  = 5,
+#     shape = 21,
+#     stroke = 1.5
+#   ) +
+# 
+#   # --- Colours for Forest vs Urban ---
+#   scale_fill_manual(
+#     values = c(
+#       "Forest" = "springgreen4",
+#       "Urban"  = "grey50"
+#     )
+#   ) +
+#     scale_color_manual(
+#     values = c(
+#       "Forest" = "black",
+#       "Urban"  = "black"
+#     )
+#   ) +
+# 
+#   labs(
+#     x      = "Habitat",
+#     y      = "Predicted barbule density"
+#   ) +
+# 
+#   theme_bw(base_size = 18) +
+#   theme(
+#     legend.position = "none",
+#     axis.text.x     = element_text(size = 12, face = "bold"),
+#     plot.title      = element_text(hjust = 0.5, face = "bold"),
+#     panel.grid.major.x = element_blank(),
+#     panel.grid.minor.x = element_blank()
+#   )
+# 
+# p1
+
+# Warning message:
+# Removed 4 rows containing missing values or values outside the scale range (`geom_point()`). 
+## There are 4 NAs
+
+###Tengo que elegir los colores
+
+
+library(ggeffects)
+library(ggplot2)
+library(dplyr)
+
+# --- Model-adjusted predictions by area, coloured by habitat ---
+pred <- predict_response(model_area_habitat, terms = c("area", "habitat"))
+pred_df <- as.data.frame(pred)
+
+# --- Summarise raw data for jitter (unadjusted, just for visual context) ---
+raw_summary <- FeatherAd_db2 %>%
+  group_by(area, habitat) %>%
+  summarise(mean_density = mean(mean_density), .groups = "drop")
+
+# --- Colour palette ---
+hab_colours <- c("Forest" = "springgreen4", "Urban" = "grey50")
+
+p2 <- ggplot() +
+  # --- Raw jittered points ---
+  geom_jitter(
+    data = FeatherAd_db2,
+    aes(x = area, y = mean_density, colour = habitat),
+    width  = 0.2,
+    height = 0,
+    size   = 1.5,
+    alpha  = 0.3,
+    shape  = 16
+  ) +
+  # --- SE error bars ---
+  geom_errorbar(
+    data = pred_df,
+    aes(x = x, ymin = predicted - std.error, ymax = predicted + std.error,
+        colour = group),
+    width     = 0.1,
+    linewidth = 0.9,
+    position  = position_dodge(width = 0.5)
+  ) +
+  # --- Predicted means ---
+  geom_point(
+    data = pred_df,
+    aes(x = x, y = predicted, fill = group),
+    size     = 4,
+    shape    = 21,
+    stroke   = 1.2,
+    position = position_dodge(width = 0.5)
+  ) +
+  # --- CLD letters at fixed y = 16 ---
+  geom_text(
+    data     = cld_df,
+    aes(x    = area, label = .group),
+    y        = 15.8,
+    size     = 4,
+    colour   = "black"
+  ) +
+  scale_y_continuous(
+    limits = c(15.5, NA),              # must be below y = 16 so letters are visible
+    expand = expansion(mult = c(0.02, 0.05))
+  ) +
+  scale_fill_manual(values = hab_colours) +
+  scale_colour_manual(values = hab_colours) +
+  labs(
+    y      = "Mean barbule density",
+    fill   = "Habitat",
+    colour = "Habitat"
+  ) +
+  theme_bw(base_size = 18) +
+  theme(
+    legend.position = "none",
+    axis.title.x    = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  )+
+  scale_y_continuous(
+  limits = c(16, 24.4),           # min and max of y axis
+  breaks = seq(16, 24, by = 2)  # breaks every 2 units: 16, 18, 20, 22, 24, 26
+)
+
+p2
+```
+
+```{r}
+library(emmeans)
+
+# --- Marginal means for area (averaged over habitat, sex, age) ---
+emm_area <- emmeans(model_area_habitat, ~ area)
+emm_area  # view the marginal means + SE
+
+# --- All pairwise comparisons ---
+pairs_area <- pairs(emm_area, adjust = "tukey")  # or "bonferroni", "fdr", "none"
+summary(pairs_area)
+
+# --- If you want confidence intervals too ---
+confint(pairs_area)
+
+# --- Compact letter display (groups sharing a letter are not significantly different) ---
+library(multcomp)
+cld(emm_area, adjust = "tukey", Letters = letters)
+
+# --- Extract CLD letters ---
+cld_df <- as.data.frame(cld(emm_area, adjust = "tukey", Letters = letters))
+cld_df$.group <- trimws(cld_df$.group)  # remove whitespace from letters
+
+# --- Calculate label position (just above the upper CI of the highest group per area) ---
+label_pos <- pred_df %>%
+  group_by(x) %>%
+  summarise(label_y = max(predicted + std.error) + 0.3)  # adjust 0.3 to taste
+
+cld_df <- cld_df %>%
+  left_join(label_pos, by = c("area" = "x"))
+
+```
+
+
+
+
+
+
+
+
+#De aqui pabajo son cosas de Pablo
+##Adults
+### Density adults (5 population pairs)
+```{r Chroma ANALYSIS Adults 5 pop., echo=TRUE, message=FALSE, warning=FALSE,fig.align="center",fig.height=12, fig.width=8}
+#PreAnalysis regarding season of feather collection
+model <- lmer(scale(mean_density) ~ factor(habitat) + factor(sex) + factor(age) + mean_YB + (1|area) +(1|area_habitat), REML='T',data=FeatherAd_db) #Model for the stats section
+plot(model)
+qqnorm(resid(model))
+#shapiro.test(resid(modelPre_C))
+check_model(model)
+# drop1( modelPre_C, test="Chisq")
+summary( model)
+anova( model)
+#ranova(modelPre_C)
+r.squaredGLMM(model)
+
+#Repeatibilidad medidas ####
+mod <- lmer(scale(YB)~sex+age+habitat
+                 + (1|id),REML='T',data=subset(adults, rep == 1))#Initial Model for Chroma
+
+mod <- lmer(scale(YC) ~ age + sex + (1 | id) + (1 | area), REML='F', data = subset(adults, habitat == "Urban"))
+# # summary(VarChromaUrb)
+
+#Bootstrapping
+nsim<- 1000 #number of simulations
+bsim <- sim(mod, n.sim=nsim) #bsim is the new, bootstrapped dataset
+
+#Retrieve all fixed effect estimates (mean and 95% credible intervals) simultaneously 
+colnames(bsim@fixef) = names(fixef(mod))
+coef_fixef =  rbind(apply(bsim@fixef,2, mean), apply(bsim@fixef, 2, quantile, prob=c(0.025,0.975)))
+
+# Transpose the fixed effects table
+fixefTable = as.data.frame(t(as.data.frame(coef_fixef))) %>%
+  tibble::rownames_to_column("coefName")
+
+# Retrieve all random effect estimates (mean, credible intervals) simultaneously
+coef_ranef = lapply(ranef(bsim), function(x) c(mean (apply(x[,,1],1,var)),  quantile(apply(x[,,1],1,var), prob=c(0.025,0.975))))
+# Transpose the random effects table
+ranefTable = as.data.frame(t(as.data.frame(coef_ranef))) %>%
+  tibble::rownames_to_column("coefName")
+
+# sigma is to call the residual (=within individual) variance
+coef_res = c(mean(bsim@sigma^2), quantile(bsim@sigma^2, c(0.025, 0.975)))
+
+# Transpose the residual effects table
+resTable = as.data.frame(t(as.data.frame(coef_res))) %>%
+  mutate(coefName = "residual")
+
+
+#put together all estimates from fixed and random effects in one single Table
+allCoefs= bind_rows(fixefTable, 
+                          ranefTable, 
+                          resTable) %>% 
+  mutate(coefString = paste0(round(`V1`,2)," (",round(`2.5%`,2),", ",round(`97.5%`,2),")"))
+
+
+##Repeatibility is estimated as among-individual variance / total variance
+AreaUrb.Rpt = apply(bsim@ranef$area[ , , 1],1,var)/  (apply(bsim@ranef$area[ , , 1],1,var)+ apply(bsim@ranef$id[ , , 1],1,var)+bsim@sigma^2)
+c(mean(AreaUrb.Rpt), quantile (AreaUrb.Rpt, prob=c(0.025,0.975)))
+
+IDUrb.Rpt = apply(bsim@ranef$id[ , , 1],1,var)/  (apply(bsim@ranef$area[ , , 1],1,var)+ apply(bsim@ranef$id[ , , 1],1,var)+bsim@sigma^2)
+c(mean(IDUrb.Rpt), quantile (IDUrb.Rpt, prob=c(0.025,0.975)))
+
+# Urb.Resid = (bsim@sigma^2)/  (apply(bsim@ranef$area[ , , 1],1,var)+ apply(bsim@ranef$id[ , , 1],1,var)+bsim@sigma^2)
+# c(mean(Urb.Resid), quantile (Urb.Resid, prob=c(0.025,0.975)))
+
+AreaFor.Rpt = apply(bsim@ranef$area[ , , 1],1,var)/  (apply(bsim@ranef$area[ , , 1],1,var)+ apply(bsim@ranef$id[ , , 1],1,var)+bsim@sigma^2)
+c(mean(AreaFor.Rpt), quantile (AreaFor.Rpt, prob=c(0.025,0.975)))
+
+IDFor.Rpt = apply(bsim@ranef$id[ , , 1],1,var)/  (apply(bsim@ranef$area[ , , 1],1,var)+ apply(bsim@ranef$id[ , , 1],1,var)+bsim@sigma^2)
+c(mean(IDFor.Rpt), quantile (IDFor.Rpt, prob=c(0.025,0.975)))
+
+# For.Resid = (bsim@sigma^2)/ (apply(bsim@ranef$area[ , , 1],1,var)+ apply(bsim@ranef$id[ , , 1],1,var)+bsim@sigma^2)
+# c(mean(For.Resid), quantile (For.Resid, prob=c(0.025,0.975)))
+
+# AreaForest.Rpt = apply(bsim@ranef$area[ , , 1],1,var)/  (apply(bsim@ranef$area[ , , 1],1,var)+bsim@sigma^2)
+# c(mean(AreaForest.Rpt), quantile (AreaForest.Rpt, prob=c(0.025,0.975)))
+# 
+# WithinAreaForest.Rpt = apply(bsim@ranef$area[ , , 1],1,var)/  (apply(bsim@ranef$area[ , , 1],1,var)+bsim@sigma^2)
+# c(mean(AreaForest.Rpt), quantile (WithinAreaForest.Rpt, prob=c(0.025,0.975)))
+
+
+### Figures ###
+#Europe Map for the 5 Urban areas (Figure 1a)
+
+```{r MAP Sampling Adults Areas, message=FALSE, warning=FALSE, include=FALSE}
+#Libraries
+library(tidyverse)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(rgeos)
+library(sf)
+library(raster)
+library(ggrepel)
+library(showtext)
+library("png")
+theme_set(theme_bw())
+
+
+font_add_google(
+  "Lato",
+  regular.wt = 300,
+  bold.wt = 700)
+
+# read vector data using rnaturalearth
+# land <- ne_download(
+#   scale = 50,
+#   type = "land",
+#   category = "physical",
+#   returnclass = "sf")
+# the above doesnt work anymore because issue on the http, instead dowload the desired vector data, e.g.
+# https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/50m/physical/ne_50m_land.zip
+# and upload it manually with ne_load
+
+land <- ne_load(scale = 50,
+  type = "land",
+  category = "physical",
+  destdir = "/Users/Pablo/Downloads/ne_50m_land",
+  returnclass = "sf")
+
+countries <- ne_countries(scale='medium',returnclass = 'sf')
+
+#urban_d<- ne_download(scale = "medium", type = "urban_areas", category = "cultural",returnclass = 'sf')
+#urban<- ne_load(scale = "medium", type = "urban_areas", category = "cultural",returnclass = 'sf')
+
+library(rgdal)
+#urban_layer <- readOGR(dsn = "/Users/Pablo/Downloads/ne_50m_urban_areas", 
+ #                    layer = "ne_50m_urban_areas")
+
+# create dataframe with  locations
+df <- data.frame(
+  site = c("Gothenburg", "Malmö", "Milan", "Madrid", "Lisbon"),
+  lat = c(57.69, 55.6,45.53,40.44,38.74),
+  lon = c(11.94, 12.99,9.21,-3.73,-9.18),
+  typeface=sample(c("plain","plain","plain","plain","plain"))
+)
+
+
+# create dataframe with  locations including meta-analyses
+df <- data.frame(
+  site = c("Gothenburg", "Malmö", "Milan", "Madrid", "Lisbon","Paris","Niort","Tartu","Turku","Antwerp","Barcelona"),
+  lat = c(57.69, 55.6, 45.53, 40.44, 38.74, 48.85, 46.32, 58.37, 60.45, 51.22, 41.38),
+  lon = c(11.94, 12.99, 9.21, -3.73, -9.18, 2.35, 0.46, 26.72, 22.26, 4.40, 2.17),
+  typeface = sample(c("plain", "plain","plain","plain","plain","plain","plain","plain","plain","plain","plain")),
+  freq = c(4, 1, 1, 1, 1, 1, 1, 3, 9, 4, 1)
+  )
+
+df <- data.frame(
+  site = c("Gothenburg", "" , "Malmö", "Milan", "Madrid", "Lisbon","Paris","Niort","Tartu","Turku","Antwerp","Barcelona"),
+  lat = c(57.69, 57.69, 55.6, 45.53, 40.44, 38.74, 48.85, 46.32, 58.37, 60.45, 51.22, 41.38),
+  lon = c(11.94, 11.94, 12.99, 9.21, -3.73, -9.18, 2.35, 0.46, 26.72, 22.26, 4.40, 2.17),
+  typeface = sample(c("plain", "plain", "plain","plain","plain","plain","plain","plain","plain","plain","plain","plain")),
+  freq = c(3, 1, 1, 1, 1, 1, 1, 1, 3, 9, 4, 1)
+  )
+
+
+p <- ggplot() +
+
+  # first layer is the land mass outline
+  # as a grey border (fancy)
+  geom_sf(data = land,
+          fill = NA,
+          color = "grey50",
+          fill = "#dfdfdf",
+          lwd = 1) +
+
+  # crop the whole thing to size
+  coord_sf(xlim = c(-25, 25),
+           ylim = c(35, 63))
+
+p <- p +
+
+  # second layer are the countries
+  # with a white outline and and a
+  # grey fill
+  geom_sf(data = countries,
+          color = "white",
+          fill = "#dfdfdf",
+          size = 0.2)+
+
+  # crop the whole thing to size
+  coord_sf(xlim = c(-25, 25),
+           ylim = c(35, 63))
+
+p <- p +
+
+  # add the locations of the sites
+  # as a point
+  geom_point(data = df, pch=21,
+             aes(lon, lat, fill=site, size = freq),
+             col = "grey20") +
+
+  # use ggrepel to add fancy
+  # labels nudged to a
+  # longitude of -25
+  geom_text_repel(
+    data = df,
+    aes(lon,
+        lat,
+        label = site,
+        fontface=typeface
+        ),
+    nudge_x      = -25 - df$lon,
+    direction    = "y",
+    hjust        = 0,
+    segment.size = 0.2,
+    size = 5,
+    seed = 1 # ensures the placing is consistent between renders
+  ) +
+  ylab("Latitude")+
+  xlab("Longitude")+
+  scale_fill_manual("site", values=c(Gothenburg = "grey93",
+                              " " = "black",   
+                             Malmö = "black",
+                             Milan = "black",
+                             Madrid = "black",
+                             Lisbon = "black",
+                             Paris = "grey93",
+                             Niort = "grey93",
+                             Tartu = "grey93",
+                             Turku = "lightskyblue3",
+                             Antwerp = "lightskyblue3",
+                             Barcelona = "lightskyblue3"),
+                    guide = "none") +
+  scale_size(breaks = c(1,4,9), range = c(4, 12), labels = c("1", "4", "8 or more")) +
+  theme(
+                legend.position = c(0.9, 0.45),
+                strip.text.x = element_text(size = 17),
+                axis.ticks = element_line(colour = "black", size=1),
+                axis.text.x=element_text(size=12,colour = "black"),
+                axis.title.x=element_text(size=17),
+                axis.text.y=element_text(size=12,colour = "black"),
+                axis.title.y=element_text(size=17),
+                plot.title = element_text(lineheight=2, face="bold", hjust=0.15,size=18),#
+                plot.margin = unit(c(0.25,0.25,0.25,0.25), "cm"))
+
+  # crop the whole thing to size
+  coord_sf(xlim = c(-25, 25),
+           ylim = c(35, 63)) 
+  
+p <- p + guides(size = guide_legend(title="Nr of studies"))
+  
+  
+GT <- readPNG("/Users/Pablo/Desktop/Figures/GT_FINAL_FINAL.png")
+  
+# p = ggdraw() + 
+#   draw_plot(p, 0, 0, 1, 1) +
+#   draw_image(GT, 0.78,0.42,0.27,-0.34)
+
+#ggsave(p, file = "/Users/Pablo/Desktop/Colour_GT/Map.pdf",
+ #      width = 10, height = 10, dpi = 350, units = "in", 
+  #     device="pdf")
+
+# ggsave(p, file = "/Users/Pablo/Dropbox/Glasgow PostDoc project (EHU:UPV)/Projects/Colour_GT/Draft/Figure1_New.png",
+#     width = 10, height = 10, dpi = 400, units = "in", 
+#        device="png")
+
+# ggsave(p, file = "../Figures/GraphicalAbstract/MapLocations.pdf",
+#      width = 12, height = 12, dpi = 350, units = "in",
+#     device="pdf")
+
+```
+
+#Adults Feather strucutre for the 5 Urban areas (Figure)
+```{r PLOT Adults 5 pop., message=FALSE, warning=FALSE, include=FALSE}
+
+# correlogram across structure and environemtnal variables
+
+variables <- FeatherAd_db %>%
+  select(
+    mean_YC, mean_YB,
+    mean_density,
+    "an_mean_Tmean", "an_se_Tmean", "an_mean_Tmin", "an_se_Tmin",
+    "an_mean_Tmax", "an_se_Tmax", "win_mean_Tmean", "win_se_Tmean",
+    "win_mean_Tmax", "win_se_Tmax", "win_mean_Tmin", "win_se_Tmin",
+    "mou_mean_Tmean", "mou_se_Tmean", "mou_mean_Tmin",
+    "mou_se_Tmin", "mou_mean_Tmax", "mou_se_Tmax")
+
+cor_matrix_structure_env <- cor(variables, use = "complete.obs")
+
+
+corrplot::corrplot(cor_matrix_structure_env, method = "color", type = "upper",
+         addCoef.col = "black", # show correlation coefficients
+         tl.col = "black", tl.srt = 45, # axis labels
+         number.cex = 0.7) 
+
+
+# Summarise mean and SD per trait, area, and habitat
+summary_df <- FeatherAd_db %>%
+  group_by(area, habitat) %>%
+  summarise(
+    sd = sd(mean_density, na.rm = TRUE), 
+    mean_density = mean(mean_density, na.rm = TRUE),
+    .groups = "drop")
+
+# Main plot with jittered raw points and overlaid means ± SD
+FigurePopDensity <- ggplot(FeatherAd_db, aes(x = factor(habitat, levels = c("Urban", "Forest")), y = mean_density)) +
+  geom_point(
+    pch = 21, size = 4, fill = "grey85", colour = "grey85",
+    position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.5),
+    aes(alpha = 0.3)) +
+  geom_pointrange(data = summary_df,
+  aes(
+    x = habitat,
+    y = mean_density,           
+    ymin = mean_density - sd,
+    ymax = mean_density + sd,
+    fill = habitat),
+  colour = "black", shape = 21, size = 1,
+  position = position_dodge(width = 0.5),
+  inherit.aes = FALSE) +
+  ylab("Barbule density") +
+  xlab(" ") +
+  facet_grid( ~ area, scales = "free_y") +
+  scale_fill_manual(values = c("yellowgreen", "black")) +
+  guides(fill = "none", alpha = "none") +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 18, hjust = 0.5, margin = margin(t = 5, b = 5)),
+    strip.text = element_text(size = 17),
+    axis.ticks = element_line(colour = "black", size = 1),
+    axis.text.x = element_text(size = 18, colour = "black"),
+    axis.title.x = element_text(size = 22),
+    axis.text.y = element_text(size = 15, colour = "black"),
+    axis.title.y = element_text(size = 22),
+    plot.margin = unit(c(1, 1, 1, 1), "cm"))
+
+ggsave(FigurePopDensity, file = "../Figures/FigurePopDensity.jpeg",
+     width = 12, height = 5, dpi = 400, units = "in",
+    device="jpeg")
+
+############
+
+
+# Main plot with jittered raw points and overlaid means ± SD
+dens_summary <- FeatherAd_db %>%
+  filter(!is.na(mean_density)) %>%  
+  group_by(area_habitat, habitat, area) %>%
+  summarise(
+    an_mean_Tmean = first(an_mean_Tmean),
+    mean_pop_density  = mean(mean_density),
+    sd_density    = sd(mean_density),
+    n = n(),
+    .groups = "drop")
+
+ggplot(dens_summary, aes(x = an_mean_Tmean, y = mean_pop_density)) +
+  geom_pointrange(aes(
+      ymin = mean_pop_density - sd_density,
+      ymax = mean_pop_density + sd_density,
+      fill = area,       
+      shape = habitat), size = 1.5 ) +
+  geom_smooth(
+    method = "lm",
+    se = TRUE,
+    colour = "tomato",
+    linewidth = 0.7,
+    alpha = 0.2) +
+  scale_shape_manual(values = c("Urban" = 21, "Forest" = 22)) +
+  scale_fill_brewer(palette = "Set2") +   # adjust fill colors
+  # scale_colour_brewer(palette = "Set2") + 
+  xlab("Annual mean temperature (°C)") +
+  ylab("Barbule density") +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 18, hjust = 0.5),
+    axis.text = element_text(size = 15, colour = "black"),
+    axis.title = element_text(size = 18),
+    plot.margin = unit(c(1, 1, 1, 1), "cm"))
+
+### All variables in one panel
+# Select the environmental columns you want
+env_vars <- c("an_mean_Tmean", "an_se_Tmean", "an_mean_Tmin", "an_se_Tmin",
+              "an_mean_Tmax", "an_se_Tmax", "win_mean_Tmean", "win_se_Tmean",
+              "win_mean_Tmax", "win_se_Tmax", "win_mean_Tmin", "win_se_Tmin",
+              "mou_mean_Tmean", "mou_se_Tmean", "mou_mean_Tmin",
+              "mou_se_Tmin", "mou_mean_Tmax", "mou_se_Tmax")
+
+# Calculate mean per population and SD for all the ENv variables
+dens_summary_all <- lapply(env_vars, function(env) {
+  FeatherAd_db %>%
+    filter(!is.na(mean_length)) %>%
+    group_by(area_habitat, habitat, area) %>%
+    summarise(
+      env_var = first(.data[[env]]),
+      mean_pop_density = mean(mean_length),
+      sd_density = sd(mean_length),
+      n = n(),
+      .groups = "drop"
+    ) %>%
+    mutate(env_name = env)
+}) %>%
+  bind_rows()
+
+# Plot a panel
+plots <- lapply(unique(dens_summary_all$env_name), function(env) {
+  df <- dens_summary_all %>% filter(env_name == env)
+  ggplot(df, aes(x = env_var, y = mean_pop_density)) +
+    geom_pointrange(
+      aes(
+        ymin = mean_pop_density - sd_density,
+        ymax = mean_pop_density + sd_density,
+        fill = area,
+        shape = habitat),size = 1.5, colour = "black") +
+    geom_smooth(
+      method = "lm",
+      se = TRUE,
+      colour = "tomato",
+      linewidth = 0.7,
+      alpha = 0.2) +
+    scale_shape_manual(values = c("Urban" = 21, "Forest" = 22)) +
+    scale_fill_brewer(palette = "Set2") +
+    labs(x = env, y = "Barbule density") +
+    theme_bw() +
+    theme(
+      legend.position = "none",
+      plot.title = element_text(size = 18, hjust = 0.5),
+      axis.text = element_text(size = 15, colour = "black"),
+      axis.title = element_text(size = 18),
+      plot.margin = unit(c(1, 1, 1, 1), "cm"))
+})
+
+panel <- wrap_plots(plots, ncol = 6)  # Adjust ncol for layout
+
+
+ggsave(panel, file = "../Figures/Figure_EnvVar_Fstruct_Trial.jpeg",
+     width = 30, height = 20, dpi = 400, units = "in",
+    device="jpeg")
+
+# ggsave(Figure1_May22, file = "../Figures/Figure1_Sep22.tiff",
+#      width = 15, height = 12, dpi = 350, units = "in",
+#     device="tiff")
+```
