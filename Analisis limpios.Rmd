@@ -14,6 +14,7 @@ library(lmerTest)
 library(emmeans)
 library(ggeffects)
 library(multcomp)
+library(cowplot)
 ```
 
 #0. Import and clean data
@@ -188,9 +189,10 @@ p1 <- ggplot() +
   theme(
     legend.position = "none",
     axis.text.x     = element_text(size = 14, face = "bold"),
+    axis.title.x    = element_blank(),
     panel.grid.major.x = element_blank(),
     panel.grid.minor.x = element_blank(),
-    axis.title.x    = element_blank(),
+    panel.grid.minor.y = element_blank(),
   )+
   scale_y_continuous(
   limits = c(14.9, 27),           # min and max of y axis
@@ -198,6 +200,8 @@ p1 <- ggplot() +
 )
   
 p1
+
+ggsave("per_pop.png", plot = p2, width = 8, height = 7, dpi = 600)
 ```
 
 #2. Are the urban effects consisten across space
@@ -315,13 +319,47 @@ p2 <- ggplot() +
     axis.title.x       = element_blank(),
     axis.text.x     = element_text(size = 14, face = "bold"),
     panel.grid.major.x = element_blank(),
-    panel.grid.minor.x = element_blank()
+    panel.grid.minor.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
   )
 
 p2
+
+ggsave("per_pop.png", plot = p2, width = 8, height = 7, dpi = 600)
+
+p2_no_axis<-p2 %>% 
+      +labs(
+    x      = "Area",
+    y      = ""
+  )
 ```
 
-#3. Euro Map
+#3. Join figures
+```{r}
+plot <- plot_grid(p1, p2_no_axis,
+          ncol       = 2,
+          align      = "h",
+          rel_widths = c(1, 2),
+          labels     = c("A", "B"),
+          label_size = 14,
+          label_fontface = "plain",
+          label_x    = c(0.22, 0.11),  # push right, into the panel
+          label_y    = 0.97             # just below the top edge
+)
+plot
+#save it
+ggsave(plot,
+  filename = "plot_effects.png",
+  width    = 12,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+
+
+
+#4. Euro Map
 ```{r}
 library(maps)
 
