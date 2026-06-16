@@ -6,19 +6,17 @@ output: html_document
 ---
 ```{r}
 library(dplyr)
-setwd("~/Desktop/Eobs for salmon")
 ```
 
 #1. load and plot coordinates to see if they make sense
 ```{r}
-coords_salmon <- read.csv("~/Desktop/Eobs for salmon/coords_salmon.csv")
+coords_salmon <- read.csv("Eobs for salmon/coords_salmon.csv")
 coord_feath<-coords_salmon %>% 
   filter(feather=="si")
 ```
 
 ```{r}
 # install packages if needed
-
 library(ggplot2)
 library(sf)
 library(rnaturalearth)
@@ -26,7 +24,7 @@ library(rnaturalearthdata)
 
 # your data frame is coord_feath
 # convert to sf object
-points_sf <- st_as_sf(coord_feath2, coords = c("longitude", "latitude"), crs = 4326)
+points_sf <- st_as_sf(coord_feath, coords = c("longitude", "latitude"), crs = 4326)
 
 # get world map
 world <- ne_countries(scale = "medium", returnclass = "sf")
@@ -100,7 +98,7 @@ ggplot() +
 #things are as they should.
 
 # Convert coords_pops2 tibble to SpatVector
-pop_points <- vect(coord_feath2, geom = c("longitude", "latitude"), crs = crs(r_tmax))
+pop_points <- vect(coord_feath, geom = c("longitude", "latitude"), crs = crs(r_tmax))
 
 # Extract all Tmax values for each point
 tmax_extract <- terra::extract(r_tmax, pop_points)
@@ -127,7 +125,7 @@ tmax_long <- tmax_extract %>%
     Date = dates[as.integer(gsub("Day_", "", Day_Index))],
     Tmax = Tmax # Only if E-OBS data is scaled by 10 (if they are really large)
   ) %>%
-  select(city, area, Date, Tmax)
+  dplyr::select(city, area, Date, Tmax)
 
 # View result
 head(tmax_long)
@@ -356,6 +354,49 @@ write.csv(coords_salmon_2, "elevation.csv")
 ```
 
 
+#get temperature for a shorter period
+```{r}
+# Subset raster to layers from 2000 onwards
+dates <- time(r_tmean)
+keep <- which(format(dates, "%Y") %in% c("2013", "2014"))
+r_tmean_sub <- r_tmean[[keep]]
+dates <- dates[keep]
+
+# Extract Tmean values for each point (subsetted raster)
+tmean_extract <- terra::extract(r_tmean_sub, pop_points)
+
+# Add PopIDs to results
+tmean_extract$city <- coord_feath$city
+tmean_extract$area <- coord_feath$area
+
+# Temporary column names matching subsetted dates
+date_names <- paste0("Day_", seq_along(dates))
+names(tmean_extract)[2:(length(dates)+1)] <- date_names
+
+# Convert from wide to long format
+tmean_long <- tmean_extract %>%
+  pivot_longer(
+    cols = starts_with("Day_"),
+    names_to = "Day_Index",
+    values_to = "Tmean"
+  ) %>%
+  mutate(Date = dates[as.integer(gsub("Day_", "", Day_Index))])
+
+
+#Filter and compute annual mean per population
+str(tmean_long)
+
+tmean_long_filt <- tmean_long %>%
+  filter(
+    (city == "Gothenburg" & format(Date, "%Y") == "2014") |
+    (city != "Gothenburg" & format(Date, "%Y") == "2013")
+  ) %>% 
+  group_by(city, area) %>% 
+  summarise(an_tmean=mean(Tmean)) %>% 
+  ungroup()
+
+write.csv(tmean_long_filt, "tmean_long_filt.csv")
+```
 
 
 

@@ -93,7 +93,7 @@ model_habitat <- lmer(mean_density ~ habitat + sex + age + habitat*age + (1|area
 summary(model_habitat)
 anova(model_habitat)
 
-plot(predict_response(model_habitat, terms="elevation"))
+plot(predict_response(model_habitat, terms="habitat"))
 
 #some tests
 hist(residuals(model_habitat))
@@ -355,6 +355,105 @@ ggsave(plot,
   dpi      = 300
 )
 ```
+
+#4. Exploring the effects of latitude, temperature and elevation
+##4.1 add elevation, temperature and latitude
+```{r}
+elevation <- read.csv("~/Dropbox/3.CEFE/10.Color con Pablo/Colouration & Cities/DataBase_Structure/Analyses/Feather-structure--Great-tits-/Eobs for salmon/elevation.csv")
+
+elevation2<-elevation %>% 
+  mutate(habitat=area,
+         area=city)
+
+str(elevation2)
+
+elevation2$habitat <- ifelse(elevation2$habitat == "Rural", "Forest", elevation2$habitat)
+elevation2$area <- ifelse(elevation2$area == "Gothenburg", "Goteborg", elevation2$area)
+
+elevation2<-elevation2 %>% 
+  dplyr::select(habitat, area, elevation, latitude)
+
+
+FeatherAd_db$latitude<-NULL
+FeatherAd_db<-left_join(FeatherAd_db, elevation2, by=c("habitat", "area"))
+FeatherAd_db$elevation<-as.numeric(FeatherAd_db$elevation)
+
+#tmean
+tmean_long_filt <- read_csv("tmean_long_filt.csv")
+tmean_long_filt$...1<-NULL
+
+tmean_long_filt$city <- ifelse(tmean_long_filt$city == "Gothenburg", "Goteborg", tmean_long_filt$city)
+tmean_long_filt$area <- ifelse(tmean_long_filt$area == "Rural", "Forest", tmean_long_filt$area)
+tmean_long_filt<-tmean_long_filt %>% 
+  rename(habitat=area,
+         area=city)
+
+FeatherAd_db<-left_join(FeatherAd_db, tmean_long_filt, by=c("habitat", "area"))
+```
+
+##4.2 Model latitude
+```{r}
+model_latitude <- lmer(mean_density ~  sex + age + latitude + (1|area_habitat)+ (1|area) +(1|id), data=FeatherAd_db) 
+summary(model_latitude)
+anova(model_latitude) #No significant effects
+```
+
+##4.2 Model elevation
+```{r}
+model_elevation <- lmer(mean_density ~  sex + age + elevation + (1|area_habitat)+ (1|area) +(1|id), data=FeatherAd_db) 
+summary(model_elevation)
+anova(model_elevation) #marginal effects
+performance::r2_nakagawa(model_elevation)
+
+str(FeatherAd_db)
+
+library(dplyr)
+library(ggeffects)
+library(ggplot2)
+
+# summarise mean ± SE per area_habitat (elevation is constant within each)
+summary_db <- FeatherAd_db %>%
+  group_by(area_habitat, elevation) %>%
+  summarise(mean_md = mean(mean_density, na.rm = TRUE),
+            se_md = sd(mean_density, na.rm = TRUE) / sqrt(n()),
+            .groups = "drop")
+
+pred_elev <- ggpredict(model_habitat, terms = "elevation [all]")
+
+plot_elevation<-ggplot() +
+  geom_ribbon(data = pred_elev, aes(x = x, ymin = conf.low, ymax = conf.high),
+              alpha = 0.2, fill = "grey40") +
+  geom_line(data = pred_elev, aes(x = x, y = predicted),
+            color = "black", linewidth = 1, linetype="solid") +
+  geom_errorbar(data = summary_db, aes(x = elevation, ymin = mean_md - se_md, ymax = mean_md + se_md),
+                width = 0, color = "black") +
+  geom_point(data = summary_db, aes(x = elevation, y = mean_md),
+             color = "black", size = 3) +
+  labs(x = "Elevation (m)", y = "Mean barbule density (barbule/mm)") +
+  scale_y_continuous(
+  limits = c(19.3, 22.1),           # min and max of y axis
+  breaks = seq(19.5, 22, by = 0.5)  # breaks every 2 units: 16, 18, 20, 22, 24, 26
+)+
+  theme_bw(base_size = 20) +
+  theme(
+    legend.position = "none",
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+  )
+
+ggsave("plot_elevation.png", plot = plot_elevation, width = 8, height = 7, dpi = 600)
+```
+
+##4.2 Model temperature
+```{r}
+model_temp <- lmer(mean_density ~ sex + age + an_tmean + (1|area_habitat)+ (1|area) +(1|id), data=FeatherAd_db) 
+summary(model_temp)
+anova(model_temp) #marginal effects
+performance::check_model(model_temp)
+```
+
+
 
 
 
